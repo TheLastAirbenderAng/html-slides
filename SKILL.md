@@ -19,8 +19,9 @@ This skill is optimized for **Claude Code** and uses `AskUserQuestion` for inter
 1. **Zero Dependencies** — Single HTML files with inline CSS/JS. No npm, no build tools.
 2. **Show, Don't Tell** — Generate visual previews, not abstract choices. People discover what they want by seeing it.
 3. **Distinctive Design** — No generic "AI slop." Every presentation must feel custom-crafted.
-4. **Content-Driven Design** — The content decides the visual treatment. Design each slide based on what it's communicating, not by cycling through a component catalog.
-5. **Viewport Fitting (NON-NEGOTIABLE)** — Every slide MUST fit exactly within 100vh. No scrolling within slides, ever. Content overflows? Split into multiple slides.
+4. **Progressive Disclosure** — Read lightweight style indexes first. For bold templates, read [bold-template-pack/selection-index.json](bold-template-pack/selection-index.json) to shortlist candidates by metadata (mood / tone / formality / density / scheme), use the small `preview.md` cards for style previews, and load a template's full `design.md` **only after** the user picks that template. Never bulk-read every `design.md`. See **Bold Template Pack** below.
+5. **Content-Driven Design** — The content decides the visual treatment. Design each slide based on what it's communicating, not by cycling through a component catalog.
+6. **Viewport Fitting (NON-NEGOTIABLE)** — Every slide MUST fit exactly within 100vh. No scrolling within slides, ever. Content overflows? Split into multiple slides.
 
 ## Design Aesthetics
 
@@ -67,6 +68,34 @@ These invariants apply to EVERY slide in EVERY presentation:
 | Chart slide | 1 heading + 1 chart (max 50vh height) + optional subtitle |
 
 **Content exceeds limits? Split into multiple slides. Never cram, never scroll.**
+
+**Calibrate by intent:** If the deck is primarily for a **live speaker** (keynote, talk, pitch), aim for the *low* end of these limits — fewer bullets, bigger type, more slides, generous negative space. If it's primarily for **async reading** (report, handout, detailed review), the *high* end is appropriate — denser, more self-contained slides with structure (grids, tables, annotations). Infer the intent from the mode/occasion if the user doesn't state it; never invent a middle option that blurs both.
+
+---
+
+## Bold Template Pack
+
+A bundled library of 34 distinctive, high-contrast editorial design systems (`bold-template-pack/`), ported from upstream. These give you authored aesthetics (Bold Poster, Biennale Yellow, 8-Bit Orbit, Cobalt Grid, Capsule, Broadside, etc.) beyond the standard Pro themes.
+
+### How to read it (progressive disclosure)
+
+1. Read [bold-template-pack/selection-index.json](bold-template-pack/selection-index.json) first — shortlist candidates by metadata only (`mood`, `tone`, `best_for`, `avoid_for`, `formality`, `density`, `scheme`).
+2. For previews, read only the shortlisted candidates' `preview.md` files.
+3. After the user chooses one, read **exactly that template's** `design.md`.
+4. Never bulk-read every `design.md`. Never read `template.html` from the source library.
+
+### Layout-model reconciliation (IMPORTANT)
+
+The bold templates were authored for upstream's **fixed 1920×1080 stage** model. This skill uses a **viewport-fluid** model (`100vh` + `clamp()` fitting, see Viewport Fitting Rules). When you apply a bold template:
+
+- Treat its `design.md` as a **style recipe** — fonts, palette, decorative vocabulary, spacing rhythm, component grammar. **Do not** import its fixed-stage layout, absolute 1920×1080 coordinates, or stage-scaling JS verbatim.
+- Translate its `vw`/`vh`/`clamp()` proportions into this skill's `100vh` + `clamp(min, preferred, max)` fitting system so every slide still fits exactly within the viewport with no scrolling.
+- Keep the user's actual content primary; the template shapes presentation, it does not override message or structure.
+- Verify rendered output for both text overflow and panel overlap.
+
+### Preview mix (Vibe / style discovery)
+
+When generating style previews, default to: **1 safe preset** from `STYLE_PRESETS.md` + **≥1 bold template** from this pack + **1 wildcard** (a second bold template or a self-generated custom design). For formal/high-stakes decks, keep the safe preset restrained and pick calmer bold templates; for expressive decks, pick one strong bold template and make the wildcard adventurous. See `bold-template-pack/README.md` for the full contract.
 
 ---
 
@@ -144,8 +173,11 @@ Do you need to edit text directly in the browser after generation? Options:
 - **Excalidraw Light** — Hand-drawn, white background, sketch borders
 - **Excalidraw Dark** — Hand-drawn, dark background, sketch borders
 - **Binary Architect** — Hacker-elite, sharp corners, neon on void-black
+- **Bold template pack** — 34 distinctive, high-contrast editorial designs (e.g. Bold Poster, Biennale Yellow, 8-Bit Orbit, Cobalt Grid). Best when the deck needs a strong, authored aesthetic beyond the standard themes.
 
 If the user already specified a theme in their prompt, skip Question 3 and use that theme. If no preference, default to Obsidian.
+
+**If "Bold template pack" is chosen:** apply the **Progressive Disclosure** workflow — read [bold-template-pack/selection-index.json](bold-template-pack/selection-index.json), shortlist 3 candidates by metadata that fit the deck's mood/formality/density, read only those candidates' `preview.md` files, show the user a single-slide preview of each, then read exactly the chosen template's `design.md` before generating. Treat the template as a **style recipe** (fonts, palette, decorative vocabulary, component grammar) and realize it within this skill's viewport-fluid fitting system — do not import its fixed-stage layout verbatim.
 
 **Question 4 — Images** (header: "Images"):
 Do you have images to include? Options:
@@ -232,8 +264,12 @@ What feeling should the audience have? Options:
 
 **Show, don't tell.** Instead of listing preset names, generate visual previews.
 
-1. Read [STYLE_PRESETS.md](references/STYLE_PRESETS.md) for available presets and their specifications.
-2. From the mood-matched presets below, **randomly pick 3** and generate a single-slide HTML preview for each. Save previews to `.claude-design/slide-previews/` and open them.
+1. Read [STYLE_PRESETS.md](references/STYLE_PRESETS.md) for safe preset candidates, **and** read [bold-template-pack/selection-index.json](bold-template-pack/selection-index.json) for bold candidates. Read **only** the `preview.md` of any bold candidate you shortlist — never bulk-read `design.md` files.
+2. Generate a single-slide HTML preview for each of **3 options** using this mix:
+   - **1 safe preset** from `STYLE_PRESETS.md` (a readable fallback)
+   - **≥1 bold template** from `bold-template-pack/selection-index.json` (shortlist by mood/formality/density/scheme)
+   - **1 wildcard** — either a second bold template or a self-generated custom design — whichever creates the strongest contrast for this deck
+   Save previews to `.claude-design/slide-previews/` and open them.
 3. Ask the user to pick one (header: "Pick a Style"):
    - Options: "1" / "2" / "3" / "Show 3 more" / "I know what I want"
 
@@ -513,6 +549,8 @@ Captures each slide as a screenshot and combines into a single PDF. Animations a
 | File | Purpose | When to Read |
 |------|---------|-------------|
 | [STYLE_PRESETS.md](references/STYLE_PRESETS.md) | Curated visual presets with colors, fonts, and signature elements | Phase 2 (style selection) |
+| [bold-template-pack/selection-index.json](bold-template-pack/selection-index.json) | Compact metadata index of 34 bold design templates — read first to shortlist | Phase 2 (when bold templates are in the mix) |
+| [bold-template-pack/README.md](bold-template-pack/README.md) | Progressive-disclosure workflow + implementation contract for bold templates | Phase 2 (reference) |
 | [viewport-base.css](assets/viewport-base.css) | Mandatory responsive CSS — copy into every presentation (presets 1-12) | Phase 3 (generation) |
 | [html-template.md](references/html-template.md) | HTML structure, JS features, code quality standards (presets 1-12) | Phase 3 (generation) |
 | [animation-patterns.md](references/animation-patterns.md) | CSS/JS animation snippets and effect-to-feeling guide (presets 1-12) | Phase 3 (generation) |
