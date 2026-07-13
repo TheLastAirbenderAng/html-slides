@@ -423,6 +423,43 @@ Save processed images with `_processed` suffix. Never overwrite originals.
 - ARIA labels where needed
 - `prefers-reduced-motion` support (included in viewport-base.css)
 
+## Fill-the-Stage Layout Snippet
+
+Reference pattern for content slides that fill the viewport height instead of clustering at the top with a hollow middle. `viewport-base.css` already sets `.slide` to `height: 100vh` / `100dvh` as a flex column; the addition here is a `.slide-body` flex filler that distributes its children across the remaining height.
+
+```html
+<div class="slide" data-slide="1">
+  <header class="slide-header"><!-- title, section label --></header>
+  <div class="slide-body">
+    <!-- children spread across full height via space-between -->
+    <div class="card reveal">…</div>
+    <div class="card reveal">…</div>
+    <div class="card reveal">…</div>
+  </div>
+  <footer class="slide-footer"><!-- page no., byline --></footer>
+</div>
+```
+
+```css
+/* .slide already has height:100vh + display:flex + flex-direction:column from viewport-base.css */
+.slide-body {
+  flex: 1;                          /* grow to fill space header/footer don't use */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;   /* or space-evenly */
+  gap: var(--content-gap);
+  overflow: hidden;
+}
+.slide-header, .slide-footer { flex: 0 0 auto; }
+```
+
+The anti-pattern this fixes: a header pinned at the top plus a callout pinned at the bottom with `margin-top: auto`, which leaves a dead vertical band in the middle. With `flex: 1` + `justify-content: space-between` on the body, lists, columns, and timelines distribute to fill the viewport instead.
+
+## Layout Gotchas
+
+- **Grid auto-placement into a narrow column.** A `grid-template-columns: 64px 1fr 1fr` with only two explicitly placed children will auto-place the next text element into the 64px slot, crush it, and trigger massive vertical overflow. Rule: in comparison/timeline grids, make `grid-template-columns` match the number of placed children, or place every child with an explicit `grid-column`. A leftover narrow column fails silently and expensively.
+- **`scrollHeight` hides flex/grid overflow.** Flex and grid clamp their container, so visual overflow — panels covering each other, content spilling behind a callout — does not raise `scrollHeight`. Verify with a rendered screenshot and an advisory bounding-box overlap check (see *Verification before delivery* in SKILL.md), not the DOM alone.
+
 ## File Structure
 
 Single presentations:

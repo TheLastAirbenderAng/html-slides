@@ -71,6 +71,15 @@ These invariants apply to EVERY slide in EVERY presentation:
 
 **Calibrate by intent:** If the deck is primarily for a **live speaker** (keynote, talk, pitch), aim for the *low* end of these limits — fewer bullets, bigger type, more slides, generous negative space. If it's primarily for **async reading** (report, handout, detailed review), the *high* end is appropriate — denser, more self-contained slides with structure (grids, tables, annotations). Infer the intent from the mode/occasion if the user doesn't state it; never invent a middle option that blurs both.
 
+### Fill the Stage (density's missing half)
+
+The limits above police *too much* content. They do not police *too little*. A slide can pass every rule and still look hollow — content clustered at the top, a callout pinned to the bottom, and a dead vertical band between. Apply this to every content slide, especially high-density / reading-first:
+
+- **Target ~85–95% of the viewport height.** If a content slide fills under ~70% of `100vh`, enlarge type, widen the grid, or add genuine content — do not leave a vertical void.
+- **Avoid the hollow middle.** The most common failure is a header pinned to the top plus a callout pinned to the bottom with `margin-top: auto`, leaving a dead band between them. Instead, make the main content region a flex filler: `flex: 1` on the body with `justify-content: space-between` (or `space-evenly`) so lists, columns, and timelines distribute across the full height.
+- **Speaker-led (low-density) slides are the exception.** Intentional negative space is the point there — a single big idea with air is correct. The fill target applies to content and dense slides, not to statement or section-divider slides.
+- See the reusable flex-fill layout snippet in [html-template.md](references/html-template.md).
+
 ---
 
 ## Bold Template Pack
@@ -96,6 +105,16 @@ The bold templates were authored for upstream's **fixed 1920×1080 stage** model
 ### Preview mix (Vibe / style discovery)
 
 When generating style previews, default to: **1 safe preset** from `STYLE_PRESETS.md` + **≥1 bold template** from this pack + **1 wildcard** (a second bold template or a self-generated custom design). For formal/high-stakes decks, keep the safe preset restrained and pick calmer bold templates; for expressive decks, pick one strong bold template and make the wildcard adventurous. See `bold-template-pack/README.md` for the full contract.
+
+---
+
+## Content Conventions
+
+Small text choices read as "AI slop" faster than big ones. Keep these defaults unless the user states otherwise:
+
+- **Default to plain punctuation in chrome.** In citations, bylines, reference lists, footers, page numbers, and nav chrome, use commas, colons, and "and" — not middle dots (`·`), em dashes (`—`), or slashes (`//`) as separators. They accumulate as visual noise across a deck and are the hardest to strip later.
+- **Respect a stated punctuation preference.** If the user asks to avoid em dashes or any flourish, apply that everywhere (chrome and prose) for that deck. When no preference is stated, lean plain in chrome; prose may use richer typography where it aids reading.
+- **Formal / academic / accessibility contexts default to plain throughout.** For academic, formal, ESL, or screen-reader-heavy decks, default to plain punctuation across both chrome and prose unless the user asks for a flourish.
 
 ---
 
@@ -270,6 +289,8 @@ What feeling should the audience have? Options:
    - **≥1 bold template** from `bold-template-pack/selection-index.json` (shortlist by mood/formality/density/scheme)
    - **1 wildcard** — either a second bold template or a self-generated custom design — whichever creates the strongest contrast for this deck
    Save previews to `.claude-design/slide-previews/` and open them.
+
+   **For high-density / reading-first decks, also generate one representative content preview per option** — a comparison, list, or table slide, whichever the deck will use most. Title-only previews do not reveal body density, fill, or readability, and that is exactly where high-density decks succeed or fail. Add it as an extra file per option (e.g., `style-a-content.html`). A content preview is a direction, not a mold: it must not become the rigid layout every content slide copies — variation across content slides is still required.
 3. Ask the user to pick one (header: "Pick a Style"):
    - Options: "1" / "2" / "3" / "Show 3 more" / "I know what I want"
 
@@ -410,6 +431,14 @@ Every slide must include a `<script type="application/json" class="slide-notes">
 }
 ```
 
+### Verification before delivery
+
+Don't trust `scrollHeight` alone. Flex and grid clamp their container, so the two most common defects are invisible to the DOM: **hollow slides** (caught by the Fill-the-Stage rule above) and **panels that visually cover each other** (one grid panel overlapping another, or content spilling behind a callout). Verify in a real browser render.
+
+- **Per-slide capture (preferred for decks > ~6 slides).** Capture each slide individually — activate one slide, wait, screenshot, repeat — instead of screenshotting the whole stage at once. This is the same technique `scripts/export-pdf.sh` uses in Phase 7B (it activates and screenshots each slide one by one); reuse that approach for verification. Whole-stage screenshots hang or wedge on decks with many stacked full-viewport `.slide` layers.
+- **Wait for animations before capturing.** Entrance `.reveal` transitions leave content faint or mid-fade if captured too early. Either wait ~1s after activating each slide, or load the deck with a `?static` flag that sets `.reveal { opacity: 1; transform: none; transition: none; }` so every slide renders in its final state instantly.
+- **Overlap check (advisory, not a gate).** For each slide, compare the bounding boxes of adjacent panels — comparison columns, content-region vs. callout, timeline cells — and flag any pair where `next.top < prev.bottom` (vertical collision) or whose horizontal ranges intersect. Treat content-region vs. callout as the highest-priority check; it is the most common collision. This is a *flag for review*, not a hard assertion: intentional overlaps (callouts meant to sit over a panel, badges, decorative layers) will trip it. Read the flags against the screenshot and fix only real collisions.
+
 ---
 
 ## Phase 4: PPT Conversion
@@ -488,9 +517,10 @@ Before saving, verify all 8 spec rules pass. Fix any that fail. Save the HTML fi
 
 ## Phase 6: Delivery
 
-1. **Clean up** — Delete `.claude-design/slide-previews/` if it exists
-2. **Open** — Use `open [filename].html` to launch in browser
-3. **Summarize** — Tell the user:
+1. **Keep the style previews** — Do NOT delete `.claude-design/slide-previews/`. It is a persistent archive the user can revisit for future decks or to re-derive a chosen look. Leave it in place across runs.
+2. **Variants** — If the user asks for a second version while keeping the original, write `name-v2.html` (then `-v3`, …) alongside the original. Never overwrite a prior version when the user wants an alternative, and keep the prior style previews so each variant's direction stays traceable.
+3. **Open** — Use `open [filename].html` to launch in browser
+4. **Summarize** — Tell the user:
    - File location, style name, slide count
    - Navigation: Arrow keys, Space, scroll/swipe, click nav dots
    - Speaker notes: Open DevTools (F12), detach to separate window — notes appear in console on each slide change
