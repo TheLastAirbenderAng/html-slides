@@ -23,6 +23,19 @@ This skill is optimized for **Claude Code** and uses `AskUserQuestion` for inter
 5. **Content-Driven Design** — The content decides the visual treatment. Design each slide based on what it's communicating, not by cycling through a component catalog.
 6. **Viewport Fitting (NON-NEGOTIABLE)** — Every slide MUST fit exactly within 100vh. No scrolling within slides, ever. Content overflows? Split into multiple slides.
 
+## Gates (non-negotiable — must survive context compaction)
+
+These three checkpoints are where this skill most often fails when an agent "uses judgment" to skip them. There is no human watching mid-run to catch the skip, so treat each as a **hard gate**, not advice.
+
+### Gate 1 — Intake (before any style or preview work)
+You MUST know, for every deck: **mode** (Pro or Vibe), **audience/occasion**, and **density** (speaker-led vs reading-first). Ask all three in a single `AskUserQuestion` call. **A detailed content brief does NOT satisfy these** — content describes *what* goes on the slides; mode/audience/density describe *how* to design them, and the user did not specify them merely by pasting content. The ONLY valid skip: the user explicitly said "don't ask, just build" or already stated all three. If you are about to generate and any of the three is still unknown, **STOP and ask first** — do not infer.
+
+### Gate 2 — Previews (before generating the deck)
+You MUST generate real, viewable preview HTML files — **3 options** (1 safe preset + ≥1 bold template + 1 wildcard), each a single title slide (plus one representative content slide for reading-first decks) — save them and have the user pick before you write the deck. **Listing style names as text choices is a violation** of "Show, Don't Tell"; people cannot judge a look from a name. The ONLY valid skip: the user named a specific theme ("use Obsidian") or explicitly said "skip previews." This gate applies in **both** Pro and Vibe.
+
+### Gate 3 — Fill (before saving, every content/dense slide)
+Every content and high-density slide MUST fill ~85–95% of `100vh`. The main content region uses `flex: 1` + `justify-content: space-between` (or `space-evenly`) so children distribute across the full height. **A header pinned at the top + a callout pinned at the bottom with `margin-top: auto` and a hollow middle FAILS this gate** — fix it before saving. Speaker-led / statement / section-divider slides are the only exemption (intentional negative space is correct there). A hollow slide is a defect, not a style.
+
 ## Design Aesthetics
 
 You tend to converge toward generic, "on distribution" outputs. In frontend design, this creates what users call the "AI slop" aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.
@@ -160,7 +173,7 @@ When modifying existing presentations, make **minimal changes** — only touch w
 
 ## Phase 1: Choose Mode
 
-**Always ask the user to choose a mode** unless they already specified one (or a specific theme) in their prompt.
+**Ask mode + audience + density before any design work (Gate 1).** Use a single `AskUserQuestion`. Do NOT infer these from the user's content brief — a detailed brief tells you the *content*, not the *design decisions*, and assuming them is the #1 cause of bad decks. Only skip if the user explicitly said "don't ask, just build" or already stated all three.
 
 Ask which mode they want (header: "Mode"):
 
@@ -194,7 +207,7 @@ Do you need to edit text directly in the browser after generation? Options:
 - **Binary Architect** — Hacker-elite, sharp corners, neon on void-black
 - **Bold template pack** — 34 distinctive, high-contrast editorial designs (e.g. Bold Poster, Biennale Yellow, 8-Bit Orbit, Cobalt Grid). Best when the deck needs a strong, authored aesthetic beyond the standard themes.
 
-If the user already specified a theme in their prompt, skip Question 3 and use that theme. If no preference, default to Obsidian.
+If the user already named a specific theme in their prompt, use it and skip Question 3. **If they did not name one, do NOT silently default to Obsidian** — follow Gate 2: generate 3 visual previews and let them pick. A silent default denies the user the "show, don't tell" choice, which is the whole point of this skill.
 
 **If "Bold template pack" is chosen:** apply the **Progressive Disclosure** workflow — read [bold-template-pack/selection-index.json](bold-template-pack/selection-index.json), shortlist 3 candidates by metadata that fit the deck's mood/formality/density, read only those candidates' `preview.md` files, show the user a single-slide preview of each, then read exactly the chosen template's `design.md` before generating. Treat the template as a **style recipe** (fonts, palette, decorative vocabulary, component grammar) and realize it within this skill's viewport-fluid fitting system — do not import its fixed-stage layout verbatim.
 
@@ -281,7 +294,7 @@ What feeling should the audience have? Options:
 
 ### Step 2B.5: Preview Matching Presets
 
-**Show, don't tell.** Instead of listing preset names, generate visual previews.
+**Show, don't tell — and this is mandatory (Gate 2).** Instead of listing preset names, generate real, viewable preview files. Text-only style choices are a violation; the user must *see* the looks to choose. This gate applies in both Pro and Vibe.
 
 1. Read [STYLE_PRESETS.md](references/STYLE_PRESETS.md) for safe preset candidates, **and** read [bold-template-pack/selection-index.json](bold-template-pack/selection-index.json) for bold candidates. Read **only** the `preview.md` of any bold candidate you shortlist — never bulk-read `design.md` files.
 2. Generate a single-slide HTML preview for each of **3 options** using this mix:
@@ -435,6 +448,7 @@ Every slide must include a `<script type="application/json" class="slide-notes">
 
 Don't trust `scrollHeight` alone. Flex and grid clamp their container, so the two most common defects are invisible to the DOM: **hollow slides** (caught by the Fill-the-Stage rule above) and **panels that visually cover each other** (one grid panel overlapping another, or content spilling behind a callout). Verify in a real browser render.
 
+- **Fill check (MANDATORY, every content/dense slide — Gate 3).** Confirm the main content region uses `flex: 1` + `justify-content: space-between` (or `space-evenly`) and fills ~85–95% of `100vh`. If a slide has `margin-top: auto` pinning a callout to the bottom with a hollow middle, FIX it before saving — do not ship hollow slides. Speaker-led/statement slides are exempt.
 - **Per-slide capture (preferred for decks > ~6 slides).** Capture each slide individually — activate one slide, wait, screenshot, repeat — instead of screenshotting the whole stage at once. This is the same technique `scripts/export-pdf.sh` uses in Phase 7B (it activates and screenshots each slide one by one); reuse that approach for verification. Whole-stage screenshots hang or wedge on decks with many stacked full-viewport `.slide` layers.
 - **Wait for animations before capturing.** Entrance `.reveal` transitions leave content faint or mid-fade if captured too early. Either wait ~1s after activating each slide, or load the deck with a `?static` flag that sets `.reveal { opacity: 1; transform: none; transition: none; }` so every slide renders in its final state instantly.
 - **Overlap check (advisory, not a gate).** For each slide, compare the bounding boxes of adjacent panels — comparison columns, content-region vs. callout, timeline cells — and flag any pair where `next.top < prev.bottom` (vertical collision) or whose horizontal ranges intersect. Treat content-region vs. callout as the highest-priority check; it is the most common collision. This is a *flag for review*, not a hard assertion: intentional overlaps (callouts meant to sit over a panel, badges, decorative layers) will trip it. Read the flags against the screenshot and fix only real collisions.
