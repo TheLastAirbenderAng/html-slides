@@ -135,6 +135,10 @@ Small text choices read as "AI slop" faster than big ones. Keep these defaults u
 
 Determine what the user wants:
 
+**Output-format check (this skill is HTML-only):** If the user wants editable **PowerPoint (`.pptx`) output**, do NOT build it here — hand off to the **`pptx` skill** (it handles `.pptx` creation and editing). `html-slides` produces HTML only. It can *consume* PPTX as **input** (Mode B below) but cannot emit `.pptx`. Keeping the two skills separate avoids one bloated, mislabeled skill juggling two conflicting toolchains (HTML = Node/Playwright; PPTX = Python/python-pptx/LibreOffice).
+
+Then determine which HTML mode applies:
+
 - **Mode A: New Presentation** — Create from scratch. Go to Phase 1.
 - **Mode B: PPT Conversion** — Convert a .pptx file. Go to Phase 4.
 - **Mode C: Enhancement** — Improve an existing HTML presentation. Read it, understand it, enhance. **Follow Mode C modification rules below.**
